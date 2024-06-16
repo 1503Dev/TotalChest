@@ -8,11 +8,18 @@
  */
 
 // User Configs
-$rootpath='&root';
+$rootpath='/storage/emulated/0/';
     // '&this': The directory of this PHP file
     // '&root': Website rootpath
     // Do not have '/' at the end. And preferably no subdirectory
+$actions=[
+    'view'=>true, // 访客是否允许查看
+    'action'=>true // 普通用户是否允许操作
+];
  
+if($actions['view']==false){
+    die('<h2>Insufficient permission</h2>');
+}
 function formatBytes($bytes) {
     // 判断大小并转换为最合适的单位
     if ($bytes >= 1073741824) {
@@ -209,10 +216,15 @@ try {
 
         h2 {
             margin-bottom: 12px;
+            width: 97vw;
+            padding-right: 8px;
+            box-sizing: border-box;
+            overflow-x: auto;
         }
 
         table {
             margin-left: 12px;
+            width: auto;
         }
 
         th,
@@ -225,15 +237,31 @@ try {
             font-weight: bold;
             padding-right: 14px;
             padding-bottom: 3px;
+            white-space: nowrap;
         }
 
-        td {
+        td{
             padding-right: 14px;
         }
+        
+        tr{
+            -height: 16px;
+        }
 
-        td.s,
-        th.s {
-            text-align: right;
+        td[list-type="size"],
+        td[list-type="type"],
+        td[list-type="action"]{
+            white-space: nowrap;
+        }
+        
+        td[list-type="name"] span{
+            display: block;
+            border-left: 2px #ccc solid;
+            margin: 1px;
+        }
+        
+        span a{
+            margin-left: 2px;
         }
 
         div.list {
@@ -242,6 +270,8 @@ try {
             border-bottom: 1px solid #646464;
             padding-top: 10px;
             padding-bottom: 14px;
+            overflow-x: auto;
+            max-height: 75vh/*calc(100vh - 256px);*/
         }
 
         div.foot,
@@ -254,6 +284,14 @@ try {
         a[file-type="directory"]{
             color: green;
         }
+        
+        <?
+        if($actions['action']==false){
+            echo '*[list-type="action"]{
+            display: none;
+        }';
+        }
+        ?>
     </style>
 </head>
 
@@ -266,6 +304,7 @@ try {
                     <th>名称</th>
                     <th>大小</th>
                     <th>类型</th>
+                    <th list-type="action">操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -273,18 +312,21 @@ try {
                 foreach ($files as $file) {
                     $filepath=$path.$file;
                     echo '<tr>';
-                    echo '<td>';
+                    echo '<td list-type="name">';
                     if(is_dir($filepath)){
-                        echo '<a file-type="directory" href="?path='.$viewpath.$file.'/">'.$file.'</a>/';
-                    } else echo '<a href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">'.$file.'</a>';
+                        echo '<span><a file-type="directory" href="?path='.$viewpath.$file.'/">'.$file.'</a>/</span>';
+                    } else echo '<span><a href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">'.$file.'</a></span>';
                     echo '</td>';
-                    echo '<td>';
+                    echo '<td list-type="size">';
                     if(is_dir($filepath)){
                         echo '-';
                     } else echo formatBytes(filesize($filepath));
                     echo '</td>';
-                    echo '<td>';
+                    echo '<td list-type="type">';
                     echo getFileType($filepath);
+                    echo '</td>';
+                    echo '<td list-type="action">';
+                    echo '<a class="btn-action" onclick="action.del(`'.$file.'`)">删除</a>';
                     echo '</td>';
                     echo "</tr>\n";
                 }
@@ -293,8 +335,18 @@ try {
         </table>
     </div>
     <div class="foot">
-        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.1
+        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.2
     </div>
+    <script>
+        const dir=`<?=$viewpath?>`;
+        const action={
+            del:function(f){
+                if(confirm('确定删除'+f+'?')){
+                    window.location.replace('?path='+dir+f+'&action=del')
+                }
+            }
+        }
+    </script>
 </body>
 
 </html>
