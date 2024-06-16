@@ -8,7 +8,7 @@
  */
 
 // User Configs
-$rootpath='/storage/emulated/0/';
+$rootpath='&root';
     // '&this': The directory of this PHP file
     // '&root': Website rootpath
     // Do not have '/' at the end. And preferably no subdirectory
