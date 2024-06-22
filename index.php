@@ -44,13 +44,31 @@ function _gft(){
     }');
 }
 function getFileType($f){
+    $types=[
+        "directory"=>"文件夹",
+        "text/html"=>"HTML",
+        "text/xml"=>"XML",
+        "text/x-php"=>"PHP",
+        "text/x-c++"=>"代码",
+        "text/plain"=>"文本文档",
+        "application/octet-stream"=>"Java字节码",
+        "application/json"=>"JSON",
+        "application/x-sharedlib"=>"共享库",
+        "application/zip"=>"zip压缩包",
+        "application/x-bzip"=>"bz压缩包",
+        "application/x-bzip2"=>"bz2压缩包",
+        "application/gzip"=>"gz压缩包",
+        "application/x-tar"=>"tar压缩包",
+        "application/x-7z-compressed"=>"7z压缩包",
+        "image/jpeg"=>"图片",
+        "image/gif"=>"图片"
+    ];
     $finfo = finfo_open(FILEINFO_MIME);
     $ft=explode(';',finfo_file($finfo, $f))[0];
     finfo_close($finfo);
-    return $ft;
-    if($ft=='text/plain'){
-        
-    }
+    if(isset($types[$ft])){
+        return $types[$ft];
+    } return $ft;
 }
 function cPTRTCS($path) {
     // 当前脚本的绝对路径
@@ -125,29 +143,7 @@ function eSWS($str) {
     return $str;
 }
 function getRelativePathToURL($p) {
-    return$p;
-    // 获取当前请求的完整URL（包括查询字符串）
-    $fullRequestUri = $_SERVER['REQUEST_URI'];
-    
-    // 获取当前站点的主机名（包含协议和主机）
-    $currentHost = $_SERVER['HTTP_HOST'];
-    
-    // 构建完整的站点URL（用于比较）
-    $siteUrl = ($_SERVER['HTTPS'] ? 'https://' : 'http://') . $currentHost;
-    
-    // 如果请求URI以站点URL开始，则去掉这部分以获取相对路径
-    if (strpos($fullRequestUri, $siteUrl) === 0) {
-        $relativePath = substr($fullRequestUri, strlen($siteUrl));
-    } else {
-        // 这里处理特殊情况，比如直接访问IP地址或非标准端口的情况
-        // 简单起见，直接返回REQUEST_URI作为相对路径
-        $relativePath = $fullRequestUri;
-    }
-    
-    // 移除查询字符串（如果有的话），只保留路径部分
-    $relativePathWithoutQuery = parse_url($relativePath, PHP_URL_PATH);
-    
-    return $relativePathWithoutQuery;
+    return $p;
 }
 function gCPRTR($rootpath) {//getCurrentPathRelativeToRoot
     if(strstr($rootpath,'&root')){
@@ -165,18 +161,56 @@ function gCPRTR($rootpath) {//getCurrentPathRelativeToRoot
 
     return $fullPath;
 }
-//die(rFO(cPTRTCS('../'),__DIR__));
+function getMsg($s){
+    if($s==true) return "成功";
+    if($s==false) return "失败";
+    else return "完成";
+}
+function handleAction($act){
+    global $actions;
+    global $path;
+    
+    if($actions["action"]!=true){
+        $r="Insufficient permission";
+    } else {
+        switch($act){
+            case "del":
+                $r="删除文件 ".getMsg(unlink($path));
+                break;
+        }
+    }
+    return ("\n".'<h2>'.$r.'</h2>
+<script>
+var path=`'.$_GET["path"].'`
+function start() {
+    var a=path.split("/")
+    var b=""
+    for(var i=0;i<a.length-1;i++){
+        b=b+"/"+a[i]
+    }
+    window.location.replace("?path="+b)
+}
+setTimeout(function(){
+    start("action")
+},2000)
+</script>');
+}
 
 $viewpath=$_GET['path'];
 if(!isset($viewpath)||$viewpath===''){
     $viewpath='/';
 }
-$viewpath=eSWS(normalizePathManually($viewpath).'/');
-//die($viewpath);
+if(!isset($_GET["action"])){
+    $viewpath=eSWS(normalizePathManually($viewpath).'/');
+}
 if($viewpath=='../') header('Location: ?path=/');
 $path=str_replace('&this',__DIR__,str_replace("&root",$_SERVER['DOCUMENT_ROOT'],$rootpath)).$viewpath;
+if(isset($_GET["action"])){
+    die(handleAction($_GET["action"]));
+}
 ensureTrailingSlash($viewpath);
 if($viewpath!=$_GET['path']) header('Location: ?path='.$viewpath);
+
 if(!file_exists($path)) die('<h2>No such file or directory.</h2><a href="?path='.$viewpath.'/../">Return to previous directory');
 try {
     $files = scandir($path);
@@ -285,6 +319,14 @@ try {
             color: green;
         }
         
+        .btn-action ~ .btn-action{
+            margin-left:4px;
+        }
+        
+        tr[file-type="directory"]{
+            display:none;
+        }
+        
         <?
         if($actions['action']==false){
             echo '*[list-type="action"]{
@@ -311,6 +353,9 @@ try {
                 <?
                 foreach ($files as $file) {
                     $filepath=$path.$file;
+                    if(is_dir($filepath)){
+                        echo '<tr file-type="directory">';
+                    } else echo '<tr>';
                     echo '<tr>';
                     echo '<td list-type="name">';
                     if(is_dir($filepath)){
@@ -326,7 +371,12 @@ try {
                     echo getFileType($filepath);
                     echo '</td>';
                     echo '<td list-type="action">';
-                    echo '<a class="btn-action" onclick="action.del(`'.$file.'`)">删除</a>';
+                    if(!is_dir($filepath)){
+                        echo '<a class="btn-action action-del" onclick="action.del(`'.$file.'`)">删除</a>';
+                    }
+                    if(is_dir($filepath)){
+                        echo '<a class="btn-action action-visit" href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">访问</a>';
+                    }
                     echo '</td>';
                     echo "</tr>\n";
                 }
@@ -335,7 +385,7 @@ try {
         </table>
     </div>
     <div class="foot">
-        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.2
+        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.3
     </div>
     <script>
         const dir=`<?=$viewpath?>`;
