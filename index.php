@@ -1,22 +1,22 @@
 <?php
 /**
  * TotalChest: Lightweight PHP File Manger
- * VERSION 1.0.0-alpha
+ * VERSION 1.0.0-alpha.4
  * LICENSE
  * 
  * https://github.com/1503Dev/TotalChest
  */
 
 // User Configs
-$rootpath='&root';
-    // '&this': The directory of this PHP file
-    // '&root': Website rootpath
+$rootpath='<this>';
+    // '<this>': The directory of this PHP file
+    // '<root>': Website rootpath
     // Do not have '/' at the end. And preferably no subdirectory
 $actions=[
     'view'=>true, // 访客是否允许查看
     'action'=>true // 普通用户是否允许操作
 ];
- 
+
 if($actions['view']==false){
     die('<h2>Insufficient permission</h2>');
 }
@@ -38,12 +38,7 @@ function ensureTrailingSlash($str) {
         header('Location: ?path='.$str.'/');
     }
 }
-function _gft(){
-    $fts=json_decode('{
-        "js":"text/javascript"
-    }');
-}
-function getFileType($f){
+function _gft($ft){
     $types=[
         "directory"=>"文件夹",
         "text/html"=>"HTML",
@@ -61,64 +56,71 @@ function getFileType($f){
         "application/x-tar"=>"tar压缩包",
         "application/x-7z-compressed"=>"7z压缩包",
         "image/jpeg"=>"图片",
-        "image/gif"=>"图片"
+        "image/gif"=>"图片",
+        "image/png"=>"图片",
+        "video/mp4"=>"视频",
+        'audio/midi'=>'MIDI',
+        'audio/mpeg'=>'MP3音乐',
+        'script/javascript'=>'JavaScript',
+        'script/php'=>'PHP'
     ];
-    $finfo = finfo_open(FILEINFO_MIME);
-    $ft=explode(';',finfo_file($finfo, $f))[0];
-    finfo_close($finfo);
     if(isset($types[$ft])){
         return $types[$ft];
     } return $ft;
 }
+function getFileType($f){
+    $finfo = finfo_open(FILEINFO_MIME);
+    $ft=explode(';',finfo_file($finfo, $f))[0];
+    finfo_close($finfo);
+    $f=strtolower($f);
+    if($ft=='text/plain'){
+        switch(explode('.',$f)[count(explode('.',$f))-1]){
+            case 'js':
+                return 'script/javascript';
+            case 'php':
+                return 'script/php';
+        }
+    }
+    return $ft;
+}
+function getFileIcon($ft){
+    if($ft=="directory") return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAG1BMVEUAAACZmQAAAADx8fH//8z//5nMzGb/zJn///++6lkdAAAAAXRSTlMAQObYZgAAAAFiS0dECIbelXoAAAAHdElNRQfiBhgXARMJeV+TAAAAT0lEQVQI12NggANBQSEwzWjiGqgAYoilpaUJCgoyMIi4gECYAoNIKAiUQRjh4TCRUohIOFykFCICFAgHMUqBoBzIABkIBAoMTEpgoMCAAQDGRBkarw77pAAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxOC0wNi0yNFQyMzowMToxOS0wNDowMO2EXMYAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTgtMDYtMjRUMjM6MDE6MTktMDQ6MDCc2eR6AAAAAElFTkSuQmCC');
+    $s=explode("/",$ft);
+    if($s[0]=="image") return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAHlBMVEUAAAAAAID///+AgIAAAADAwMCAAAAA//8AgAAAgIA7Mqk3AAAAAXRSTlMAQObYZgAAAAFiS0dEAmYLfGQAAAAHdElNRQfiBhgXECN8eUwvAAAAkElEQVQoz2NgIAIwCkIBXEAJApQF0AUU0QWUBNAFFNEEjI0dUARUQ0OdUQSAACYAcwhcQCwNDBIRAhANSALq5eXl7kVoAi4oAublJS3IAsqTiz1QBDRnmnZ0OCELTA7pQFVhGuqBokI5NDSiJQhVIDQVRcDY2DjZCJ/T0T2H4X2MACIkwOICBxABBmMEwBL1AOtUQBEQRL3xAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA2LTI0VDIzOjE2OjM1LTA0OjAwS1P1dgAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNi0yNFQyMzoxNjozNS0wNDowMDoOTcoAAAAASUVORK5CYII=');
+    if($s[0]=='audio') return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAElBMVEUAAACAgID////AwMCAAIAAAAC9RW8gAAAAAXRSTlMAQObYZgAAAAFiS0dEAmYLfGQAAAAHdElNRQfiBhgXExTv6brjAAAARUlEQVQI12NgEAQBBiAQUlJSUhaAMRTBDBcl1dAAMMNFSRnMcIIzVNAYKjCGC5yhBFOsAmc4QRkgO4AMYWMQADJCwSAAAJgaEw++7qzUAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA2LTI0VDIzOjE5OjIwLTA0OjAwJMqBwgAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNi0yNFQyMzoxOToyMC0wNDowMFWXOX4AAAAASUVORK5CYII=');
+    if($s[0]=='video') return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAElBMVEUAAACAgID////AwMAAAAD/AADwNPkuAAAAAXRSTlMAQObYZgAAAAFiS0dEAmYLfGQAAAAHdElNRQfiBhoANxc0aHeBAAAAVklEQVQI103M0Q2AMAiE4Ruh1boAGyAMYNvbfyZPo8b/6QsBAFRVoBYz8xd7eUA+sER5UV1HVhNtxvTeEgcZPjKBNcKpCbaYfVCgGrr6/vyg7YgLvDsBNoERSAZ7Iq4AAAAldEVYdGRhdGU6Y3JlYXRlADIwMTgtMDYtMjZUMDA6NTU6MjMtMDQ6MDBkw4VTAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE4LTA2LTI2VDAwOjU1OjIzLTA0OjAwFZ497wAAAABJRU5ErkJggg==');
+    if($s[0]=='script'||$s[1]=='x-php') return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAElBMVEWAgIAAAAD////AwMD//wCAgACfPtibAAAAAWJLR0QCZgt8ZAAAAAd0SU1FB+IGGgAyEaB8JvEAAABbSURBVAjXVYztDcAgCETxYwBxAqPtAMQJtCMY9l+lePZPL4G85B4QnTjytZItsSlzCsDrStmg1CkBcCvzrqDAibry/4qcNsgt5WeDH/FCVbrrR2Z7YxA6IsRfXh2UD0vkCUrWAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA2LTI2VDAwOjUwOjE3LTA0OjAw+Cpt5wAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNi0yNlQwMDo1MDoxNy0wNDowMIl31VsAAAAASUVORK5CYII=');
+    if($s[1]=='html'||$s[1]=='xml') return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAHlBMVEUAAACAgID////AwMAAAAAAgIAA//8AAIAAgAAAAP9fcaSUAAAAAXRSTlMAQObYZgAAAAFiS0dEAmYLfGQAAAAHdElNRQfiBhoAOCV7JzrOAAAAT0lEQVQI12MQBAMGBgYhJSBQFoAxFKEMFRcHBiFlpdAgZSUgI11VLVw9yYFBuEg1tV2pGCwSMR0kAlRTXgRWowQGQIZqKBAQEIExXCDAAQAVSxevXM5m8QAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxOC0wNi0yNlQwMDo1NjozNy0wNDowMLcRGt0AAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTgtMDYtMjZUMDA6NTY6MzctMDQ6MDDGTKJhAAAAAElFTkSuQmCC');
+    if($s[1]=="x-sharedlib") return('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAElBMVEUAAACAgID///8AAP8AAADAwMAT19+5AAAAAXRSTlMAQObYZgAAAAFiS0dEAmYLfGQAAAAHdElNRQfiBhoAMQWRi6FPAAAAVElEQVQI12MQBAMBBgYhJRAQhDGEBBiElI2VjJVFXBiEjJWNgCgEiQGWAjHAipUgUkDBEGyKYVKiQJWhoUCGiGtooIuLUAgDA6OLCwODI5ABBiwuACkJE4RkZcj6AAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA2LTI2VDAwOjQ5OjA1LTA0OjAwnoSIWgAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNi0yNlQwMDo0OTowNS0wNDowMO/ZMOYAAAAASUVORK5CYII=');
+    return ('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQfiBhgXBwzSK/XgAAAAVUlEQVQoz82RyQ3AIAwExxGFpTNIZ6SyzYMghWP/mQ/CXsaSCYAiFkp8L5qp6o8ODPn1pn37bIcIYxCiMhiuaUAnraWR3xryLuAMdtWT4baB9qny/QcuKiSXnu3JMgAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxOC0wNi0yNFQyMzowNzoxMi0wNDowMOKdeHsAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTgtMDYtMjRUMjM6MDc6MTItMDQ6MDCTwMDHAAAAAElFTkSuQmCC');
+}
 function cPTRTCS($path) {
-    // 当前脚本的绝对路径
     $currentScriptDir = __DIR__;
-    
-    // 服务器文档根目录
     $docRoot = $_SERVER['DOCUMENT_ROOT'];
-    
-    // 确保文档根目录和路径都以斜杠结尾，以便正确比较和替换
     if (substr($docRoot, -1) !== '/') {
         $docRoot .= '/';
     }
     if (substr($path, 0, 1) !== '/') {
         $path = '/' . $path;
     }
-    
-    // 从路径中移除文档根目录部分
     $pathWithoutDocRoot = ltrim(str_replace($docRoot, '', $path), '/');
-    
-    // 如果原始路径不是相对于文档根目录的，此逻辑可能需要调整
-    // 这里假定输入的$path总是相对于文档根的，直接计算相对路径
     $relativePath = $currentScriptDir . '/' . $pathWithoutDocRoot;
-    
-    // 确保结果路径规范化，避免多余的斜杠
     $relativePath = rtrim($relativePath, '/');
 
     return $relativePath;
 }
 function rFO($haystack, $needle) {
-    // 使用str_replace找到并替换掉第一个匹配的子字符串，限制定符1表示只替换第一个匹配项
     $result = str_replace($needle, '', $haystack, $count);
-    
-    // 确保确实有替换发生，避免不必要的操作
     if ($count > 0) {
         return $result;
     } else {
-        // 如果没有找到匹配项，则返回原字符串
         return $haystack;
     }
 }
 function normalizePathManually($path) {
-    // 处理路径首尾的斜杠
     $path = trim($path, '/');
-
-    // 分割路径为数组
     $parts = explode('/', $path);
-
-    // 用于存储处理后的路径组件
     $normalizedParts = [];
-
     foreach ($parts as $part) {
         if ($part === '..') {
             // 如果遇到'..'并且 normalizedParts 中有元素（非根目录情况），则移除最后一个元素
@@ -129,8 +131,6 @@ function normalizePathManually($path) {
             $normalizedParts[] = $part;
         }
     }
-
-    // 重新组合路径
     return implode('/', $normalizedParts);
 }
 function eSWS($str) {
@@ -162,9 +162,36 @@ function gCPRTR($rootpath) {//getCurrentPathRelativeToRoot
     return $fullPath;
 }
 function getMsg($s){
-    if($s==true) return "成功";
-    if($s==false) return "失败";
-    else return "完成";
+    if($s===true) return "成功";
+    if($s===false) return "失败";
+    else return "已尝试";
+}
+function removeDirectoryRecursively($dir) {
+    if (!file_exists($dir) || !is_dir($dir)) {
+        return false;
+    }
+    $files = array_diff(scandir($dir), array('.', '..'));
+    foreach ($files as $file) {
+        $filePath = "$dir/$file";
+        if (is_dir($filePath)) {
+            removeDirectoryRecursively($filePath);
+        } else {
+            unlink($filePath);
+        }
+    }
+    rmdir($dir);
+    return true;
+}
+function hasChildFiles($dir) {
+    if (!is_dir($dir)) return 'false';
+    $l=scandir($dir);
+    $l=array_diff($l, array('.','..'));
+    if(count($l)) return 'true';
+    return 'false';
+}
+function isAllSameChar($str, $char) {
+    $result = str_replace($char, '', $str);
+    return strlen($result) === 0;
 }
 function handleAction($act){
     global $actions;
@@ -175,24 +202,34 @@ function handleAction($act){
     } else {
         switch($act){
             case "del":
-                $r="删除文件 ".getMsg(unlink($path));
+                if(strpos($path,'/../')||substr($path,-3)=='/..'||strpos($path,'/./')||substr($path,-2)=='/.'||$_GET['path']=='/'||isAllSameChar($_GET['path'],'/')) $r='删除文件夹 失败';else if(is_dir($path)){
+                    if($_GET['has_child']=='true'){
+                        $r="删除文件夹 ".getMsg(removeDirectoryRecursively($path));
+                    } else {
+                        $r="删除文件夹 ".getMsg(rmdir($path));
+                    }
+                }
+                else $r="删除文件 ".getMsg(unlink($path));
+                break;
+            case "mkdir":
+                $r="创建文件夹 ".getMsg(mkdir($path));
                 break;
         }
     }
     return ("\n".'<h2>'.$r.'</h2>
 <script>
-var path=`'.$_GET["path"].'`
+var path="'.$_GET["path"].'"
 function start() {
     var a=path.split("/")
     var b=""
     for(var i=0;i<a.length-1;i++){
         b=b+"/"+a[i]
     }
-    window.location.replace("?path="+b)
+    window.location.replace("?path="+encodeURIComponent(b))
 }
 setTimeout(function(){
     start("action")
-},2000)
+},1000)
 </script>');
 }
 
@@ -203,8 +240,8 @@ if(!isset($viewpath)||$viewpath===''){
 if(!isset($_GET["action"])){
     $viewpath=eSWS(normalizePathManually($viewpath).'/');
 }
-if($viewpath=='../') header('Location: ?path=/');
-$path=str_replace('&this',__DIR__,str_replace("&root",$_SERVER['DOCUMENT_ROOT'],$rootpath)).$viewpath;
+if($viewpath=='../'||$viewpath=='/../') header('Location: ?path=/');
+$path=str_replace('<this>',__DIR__,str_replace("<root>",$_SERVER['DOCUMENT_ROOT'],$rootpath)).$viewpath;
 if(isset($_GET["action"])){
     die(handleAction($_GET["action"]));
 }
@@ -226,8 +263,8 @@ try {
 <html>
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Index of <?=$viewpath?></title>
     <style>
         a{
@@ -248,12 +285,13 @@ try {
             background-color: #F5F5F5;
         }
 
-        h2 {
+        h2,h3 {
             margin-bottom: 12px;
             width: 97vw;
             padding-right: 8px;
             box-sizing: border-box;
             overflow-x: auto;
+            white-space: nowrap;
         }
 
         table {
@@ -288,10 +326,25 @@ try {
             white-space: nowrap;
         }
         
+        /*td[list-type="action"],
+        th[list-type="action"]{
+            position: fixed;
+            right:0px;
+        }*/
+        
         td[list-type="name"] span{
             display: block;
-            border-left: 2px #ccc solid;
+            white-space: nowrap;
             margin: 1px;
+        }
+        
+        td[list-type="icon"] img{
+            width:14px;
+            margin:0px;
+        }
+        
+        td[list-type="icon"]{
+            padding-right:2px;
         }
         
         span a{
@@ -327,6 +380,16 @@ try {
             display:none;
         }
         
+        div[list-type="action"]{
+            margin:4px 0px -4px 12px;
+            font-size: 12px;
+        }
+        
+        a.btn-action,
+        div[list-type="action"] a{
+            color: darkorange;
+        }
+        
         <?
         if($actions['action']==false){
             echo '*[list-type="action"]{
@@ -338,11 +401,12 @@ try {
 </head>
 
 <body>
-    <h2>Index of <?=$viewpath?></h2>
+    <h3>Index of <?=$viewpath?></h3>
     <div class="list">
         <table summary="Directory Listing" cellpadding="0" cellspacing="0">
             <thead>
                 <tr>
+                    <th list-type="icon"></th>
                     <th>名称</th>
                     <th>大小</th>
                     <th>类型</th>
@@ -351,49 +415,92 @@ try {
             </thead>
             <tbody>
                 <?
+                function isParent($fn){
+                    if($fn=='..') return 'Parent Dir';
+                    return $fn;
+                }
+                function isParentBoolean($fn){
+                    if($fn=='..') return true;
+                    return false;
+                }
+                function fileNameFormat($fn){
+                    $fn=str_replace('&','&amp;',$fn);
+                    $fn=str_replace(' ','&nbsp;',$fn);
+                    return $fn;
+                }
                 foreach ($files as $file) {
                     $filepath=$path.$file;
                     if(is_dir($filepath)){
                         echo '<tr file-type="directory">';
                     } else echo '<tr>';
                     echo '<tr>';
+                    
+                    echo '<td list-type="icon">';
+                    echo '<img src="'.getFileIcon(getFileType($filepath)).'"/>';
+                    echo '</td>';
+                    
                     echo '<td list-type="name">';
                     if(is_dir($filepath)){
-                        echo '<span><a file-type="directory" href="?path='.$viewpath.$file.'/">'.$file.'</a>/</span>';
-                    } else echo '<span><a href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">'.$file.'</a></span>';
+                        echo '<span><a file-type="directory" href="?path='.urlencode($viewpath.$file).'/">'.fileNameFormat(isParent($file)).'</a>/</span>';
+                    } else echo '<span><a href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">'.fileNameFormat($file).'</a></span>';
                     echo '</td>';
+                    
                     echo '<td list-type="size">';
                     if(is_dir($filepath)){
                         echo '-';
                     } else echo formatBytes(filesize($filepath));
                     echo '</td>';
+                    
                     echo '<td list-type="type">';
-                    echo getFileType($filepath);
+                    echo _gft(getFileType($filepath));
                     echo '</td>';
+                    
                     echo '<td list-type="action">';
-                    if(!is_dir($filepath)){
-                        echo '<a class="btn-action action-del" onclick="action.del(`'.$file.'`)">删除</a>';
-                    }
-                    if(is_dir($filepath)){
-                        echo '<a class="btn-action action-visit" href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">访问</a>';
-                    }
+                    if(!isParentBoolean($file)){
+                        echo '<a class="btn-action action-del" onclick="action.del(`'.$file.'`,'.hasChildFiles($filepath).')">删除</a>';
+                        if(is_dir($filepath)){
+                            echo '<a class="btn-action action-visit" href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">访问</a>';
+                        }
+                    } else  echo '<a class="btn-action">-</a>';
                     echo '</td>';
+                    
                     echo "</tr>\n";
                 }
                 ?>
             </tbody>
         </table>
+        <div list-type="action">
+            <a onclick="action.mkdir()">新建文件夹</a>
+        </div>
     </div>
     <div class="foot">
-        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.3
+        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.4
     </div>
     <script>
-        const dir=`<?=$viewpath?>`;
+        const dir="<?=$viewpath?>";
         const action={
-            del:function(f){
-                if(confirm('确定删除'+f+'?')){
-                    window.location.replace('?path='+dir+f+'&action=del')
+            del:function(f,hasChild){
+                let msg='确定删除'+f+'?'
+                if(hasChild==true){
+                    if(confirm(msg)!=true) return
+                    msg='再次确定删除文件夹'+f+'以及里面的所有文件?'
                 }
+                if(confirm(msg)){
+                    window.location.replace('?path='+encodeURIComponent(dir+f)+'&action=del&has_child='+hasChild)
+                }
+            },
+            mkdir:function(){
+                function isValidFileName(name) {
+                    if(name.length>255) return false
+                    if(name==".."||name=='.') return false
+                    var invalidCharsPattern = /[\\/:*?"<>|]/; // 匹配不允许的文件/文件夹字符
+                    return !invalidCharsPattern.test(name);
+                }
+                let fn=prompt('新建文件夹')
+                if(fn=="") return
+                if(isValidFileName(fn)){
+                    window.location.replace('?path='+encodeURIComponent(dir)+encodeURIComponent(fn)+'&action=mkdir')
+                } else alert('文件名不能包含\\/:*?"<>|，不能为..和.，且不能超过255个字符');
             }
         }
     </script>
