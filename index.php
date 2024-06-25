@@ -1,7 +1,7 @@
 <?php
 /**
  * TotalChest: Lightweight PHP File Manger
- * VERSION 1.0.0-alpha.4
+ * VERSION 1.0.0-beta.5
  * LICENSE
  * 
  * https://github.com/1503Dev/TotalChest
@@ -13,11 +13,283 @@ $rootpath='<this>';
     // '<root>': Website rootpath
     // Do not have '/' at the end. And preferably no subdirectory
 $actions=[
-    'view'=>true, // 访客是否允许查看
-    'action'=>true // 普通用户是否允许操作
+    'view'=>true // 访客是否允许查看
+];
+$users=[
+    'Admin'=>[
+        'password'=>'7300cbe969a3c38a0cdf8bf5918afb50a1da4c982caf9af5ba4dbad31f490bee', //Admin114514
+        'permission'=>100 // 管理员
+    ],
+    'Guest'=>[
+        'password'=>'0ec3965f98a8ee525e54eb487e8e38aa66985b1ababd66918fa32be73bcf2f42', //Guest123456
+        'permission'=>0 // 普通成员
+    ]
+    /**
+     * '用户名(区分大小写)'=>[
+     *     'password'=>'密码(sha-256)',
+     *     'permission'=>权限(100为管理员，其余为普通成员)
+     * ]
+     */
 ];
 
-if($actions['view']==false){
+
+
+$html_style=' 
+.header {
+    width: 100%;
+    height: 48px;
+    background: white;
+    box-shadow: 0px 1px 5px rgba(0,0,0,0.5);
+    position: fixed;
+    left: 0px;
+    top: 0px
+}
+
+.header div{
+    display:inline-box;
+}
+
+.header>.title{
+    height:100%;
+    line-height:48px;
+    margin-left:8px;
+    font-size:20px;
+    font:bold;
+}
+
+.header>.btns{
+    position:absolute;
+    top:0px;
+    right:8px;
+    height:100%;
+    display: table;
+}
+
+.header>.btns> .btn{
+    display: table-cell;
+    vertical-align: middle;
+    font-size:90%;
+}
+
+.header>.btns> .btn img{
+    vertical-align: middle;
+}
+
+a {
+    text-decoration: none
+}
+
+a:not([nocolor]),
+a:active {
+    color: blue
+}
+
+a:hover,
+a:focus {
+    text-decoration: underline;
+    color: red
+}
+
+body {
+    background-color: #F5F5F5;
+}
+
+h2,
+h3 {
+    margin-bottom: 12px;
+    width: 97vw;
+    padding-right: 8px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    white-space: nowrap
+}
+
+table {
+    margin-left: 12px;
+    width: auto
+}
+
+th,
+td {
+    font: 90% monospace;
+    text-align: left
+}
+
+th {
+    font-weight: bold;
+    padding-right: 14px;
+    padding-bottom: 3px;
+    white-space: nowrap
+}
+
+td {
+    padding-right: 14px
+}
+
+tr {
+    -height: 16px
+}
+
+td[list-type="size"],
+td[list-type="type"],
+td[list-type="action"] {
+    white-space: nowrap
+}
+
+td[list-type="name"] span {
+    display: block;
+    white-space: nowrap;
+    margin: 1px
+}
+
+td[list-type="icon"] img {
+    width: 14px;
+    margin: 0px
+}
+
+td[list-type="icon"] {
+    padding-right: 2px
+}
+
+span a {
+    margin-left: 2px
+}
+
+div.list {
+    background-color: white;
+    border-top: 1px solid #646464;
+    border-bottom: 1px solid #646464;
+    padding-top: 10px;
+    padding-bottom: 14px;
+    overflow-x: auto;
+    max-height: 75vh
+}
+
+div.foot,
+div.foot * {
+    font: 90% monospace;
+    color: #787878;
+    padding-top: 4px
+}
+
+a[file-type="directory"] {
+    color: green
+}
+
+.btn-action~.btn-action {
+    margin-left: 4px
+}
+
+tr[file-type="directory"] {
+    display: none
+}
+
+div[list-type="action"] {
+    margin: 4px 0px -4px 12px;
+    font-size: 12px
+}
+
+a.btn-action,
+div[list-type="action"] a {
+    color: darkorange
+}
+';
+$version='1.0.0-beta.5';
+function verifyAccount(){
+    global $users;
+    $stat=[
+        'stat'=>false,
+        'msg'=>'',
+        'user'=>'',
+        'permission'=>0
+    ];
+    if(!isset($_COOKIE['TotalChest_User'])||!isset($_COOKIE['TotalChest_Password'])){
+        $stat['msg']='请先登录';
+    } else if(!isset($users[$_COOKIE['TotalChest_User']])){
+        $stat['msg']='账号不存在';
+    } else if($_COOKIE['TotalChest_Password']!==$users[$_COOKIE['TotalChest_User']]['password']){
+        $stat['msg']='密码错误';
+    } else {
+        $stat['stat']=true;
+        $stat['user']=$_COOKIE['TotalChest_User'];
+        $stat['permission']=$users[$_COOKIE['TotalChest_User']]['permission'];
+    }
+    return $stat;
+}
+function showUser(){
+    if(isset($_COOKIE['TotalChest_User'])){
+        return urldecode($_COOKIE['TotalChest_User']);
+    } return '';
+}
+
+if((!verifyAccount()['stat']&&$actions['view']==false)||isset($_GET['login'])){
+    die('<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TotalChest: 登录</title>
+    <style>
+        '.$html_style.'
+    </style>
+</head>
+
+<body>
+    <h3>登录</h3>
+    <b>'.verifyAccount()['msg'].'</b>
+    <div class="list">
+        <table summary="Directory Listing" cellpadding="0" cellspacing="0">
+            <tbody>
+                <tr>
+                    <td list-type="icon">
+                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAG1BMVEUAAAAAAACAgIDAwMD///8AAP8AAIAA/wAAgABQLitQAAAAAXRSTlMAQObYZgAAAAFiS0dEBI9o2VEAAAAHdElNRQfiBhoANhnKy2vHAAAAbUlEQVQI1y2NQQ6DMBADTV6QDah3QsQdrdqeS/wF7pEQ+QgfZwn1xaP1WgZMIuIBF0cDASaVBo4/My5w2bxffYPA93MZ+I8C8x1ZizSIUQZVj85KaX15JLJqnguSfra6HxXpe1ZTQWwan+d78wJPkhJ8GYBSZwAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxOC0wNi0yNlQwMDo1NDoyNS0wNDowMOjR21cAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTgtMDYtMjZUMDA6NTQ6MjUtMDQ6MDCZjGPrAAAAAElFTkSuQmCC"/>
+                    </td>
+                    <td list-type="name">
+                        账号
+                    </td>
+                    <td>
+                        <input id="user" type="text" value="'.showUser().'">
+                    </td>
+                </tr>
+                <tr>
+                    <td list-type="icon">
+                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAJFBMVEUAAACAgIAAAAD////AwMAA/wAAgACAAAD/AACAgAD//wAAAP8K7E+fAAAAAXRSTlMAQObYZgAAAAFiS0dEAxEMTPIAAAAHdElNRQfiBhgXEB4kEQA+AAAAb0lEQVQI12NgYGBgVGCAAGEnCM1oqAIRElZNAgsxmlTMAgsxmmhvMgEzLJyUIVIum8ECDJNUXMACnCqWSmCByZqLZ86cOYGBYdYkrVWrVi0CMmZqLfFyWaLAMGXVKicVJaByJhcXBSYGkHIlJbCNADcgF4855DANAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA2LTI0VDIzOjE2OjMwLTA0OjAwGWva0QAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNi0yNFQyMzoxNjozMC0wNDowMGg2Ym0AAAAASUVORK5CYII="/>
+                    </td>
+                    <td list-type="name">
+                        密码
+                    </td>
+                    <td>
+                        <input id="pwd" type="password">
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div list-type="action">
+            <a onclick="action.login()">登录</a>
+        </div>
+    </div>
+    <div class="foot">
+        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/'.$version.' 
+    </div>
+    <script>
+        function sha256(n){function r(n,r){const t=(65535&n)+(65535&r);return(n>>16)+(r>>16)+(t>>16)<<16|65535&t}function t(n,r){return n>>>r|n<<32-r}function o(n,r){return n>>>r}function e(n,r,t){return n&r^~n&t}function u(n,r,t){return n&r^n&t^r&t}function f(n){return t(n,2)^t(n,13)^t(n,22)}function c(n){return t(n,6)^t(n,11)^t(n,25)}function i(n){return t(n,7)^t(n,18)^o(n,3)}return function(n){const r="0123456789abcdef";let t="";for(let o=0;o<4*n.length;o++)t+=r.charAt(n[o>>2]>>8*(3-o%4)+4&15)+r.charAt(n[o>>2]>>8*(3-o%4)&15);return t}(function(n,h){const a=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298],C=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225],g=new Array(64);let l,d,m,s,S,A,b,p,v,w,y,j;for(n[h>>5]|=128<<24-h%32,n[15+(h+64>>9<<4)]=h,v=0;v<n.length;v+=16){for(l=C[0],d=C[1],m=C[2],s=C[3],S=C[4],A=C[5],b=C[6],p=C[7],w=0;w<64;w++)g[w]=w<16?n[w+v]:r(r(r(t(k=g[w-2],17)^t(k,19)^o(k,10),g[w-7]),i(g[w-15])),g[w-16]),y=r(r(r(r(p,c(S)),e(S,A,b)),a[w]),g[w]),j=r(f(l),u(l,d,m)),p=b,b=A,A=S,S=r(s,y),s=m,m=d,d=l,l=r(y,j);C[0]=r(l,C[0]),C[1]=r(d,C[1]),C[2]=r(m,C[2]),C[3]=r(s,C[3]),C[4]=r(S,C[4]),C[5]=r(A,C[5]),C[6]=r(b,C[6]),C[7]=r(p,C[7])}var k;return C}(function(n){const r=[];for(let t=0;t<8*n.length;t+=8)r[t>>5]|=(255&n.charCodeAt(t/8))<<24-t%32;return r}(n=function(n){n=n.replace(/\r\n/g,"\n");let r="";for(let t=0;t<n.length;t++){const o=n.charCodeAt(t);o<128?r+=String.fromCharCode(o):o>127&&o<2048?(r+=String.fromCharCode(o>>6|192),r+=String.fromCharCode(63&o|128)):(r+=String.fromCharCode(o>>12|224),r+=String.fromCharCode(o>>6&63|128),r+=String.fromCharCode(63&o|128))}return r}(n)),8*n.length))}
+        user.value=decodeURI(user.value)
+        const action={
+            login:function(){
+                document.cookie="TotalChest_User="+
+                    encodeURIComponent(user.value)
+                document.cookie="TotalChest_Password="+
+                    encodeURIComponent(sha256(pwd.value))
+                window.location.replace("?path=/")
+            }
+        }
+    </script>
+</body>
+
+</html>');
+}
+if($actions['view']==false&&!verifyAccount()['stat']){
     die('<h2>Insufficient permission</h2>');
 }
 function formatBytes($bytes) {
@@ -197,7 +469,7 @@ function handleAction($act){
     global $actions;
     global $path;
     
-    if($actions["action"]!=true){
+    if(verifyAccount()['permission']!=100){
         $r="Insufficient permission";
     } else {
         switch($act){
@@ -265,133 +537,14 @@ try {
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Index of <?=$viewpath?></title>
+    <title>TotalChest</title>
     <style>
-        a{
-            text-decoration: none;
-        }
-        a:not([nocolor]),
-        a:active {
-            color: blue;
-        }
-
-        a:hover,
-        a:focus {
-            text-decoration: underline;
-            color: red;
-        }
-
+        <?=$html_style?>
         body {
-            background-color: #F5F5F5;
+            padding-top:32px;
         }
-
-        h2,h3 {
-            margin-bottom: 12px;
-            width: 97vw;
-            padding-right: 8px;
-            box-sizing: border-box;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-
-        table {
-            margin-left: 12px;
-            width: auto;
-        }
-
-        th,
-        td {
-            font: 90% monospace;
-            text-align: left;
-        }
-
-        th {
-            font-weight: bold;
-            padding-right: 14px;
-            padding-bottom: 3px;
-            white-space: nowrap;
-        }
-
-        td{
-            padding-right: 14px;
-        }
-        
-        tr{
-            -height: 16px;
-        }
-
-        td[list-type="size"],
-        td[list-type="type"],
-        td[list-type="action"]{
-            white-space: nowrap;
-        }
-        
-        /*td[list-type="action"],
-        th[list-type="action"]{
-            position: fixed;
-            right:0px;
-        }*/
-        
-        td[list-type="name"] span{
-            display: block;
-            white-space: nowrap;
-            margin: 1px;
-        }
-        
-        td[list-type="icon"] img{
-            width:14px;
-            margin:0px;
-        }
-        
-        td[list-type="icon"]{
-            padding-right:2px;
-        }
-        
-        span a{
-            margin-left: 2px;
-        }
-
-        div.list {
-            background-color: white;
-            border-top: 1px solid #646464;
-            border-bottom: 1px solid #646464;
-            padding-top: 10px;
-            padding-bottom: 14px;
-            overflow-x: auto;
-            max-height: 75vh/*calc(100vh - 256px);*/
-        }
-
-        div.foot,
-        div.foot *{
-            font: 90% monospace;
-            color: #787878;
-            padding-top: 4px;
-        }
-        
-        a[file-type="directory"]{
-            color: green;
-        }
-        
-        .btn-action ~ .btn-action{
-            margin-left:4px;
-        }
-        
-        tr[file-type="directory"]{
-            display:none;
-        }
-        
-        div[list-type="action"]{
-            margin:4px 0px -4px 12px;
-            font-size: 12px;
-        }
-        
-        a.btn-action,
-        div[list-type="action"] a{
-            color: darkorange;
-        }
-        
         <?
-        if($actions['action']==false){
+        if(verifyAccount()['permission']!=100){
             echo '*[list-type="action"]{
             display: none;
         }';
@@ -401,6 +554,23 @@ try {
 </head>
 
 <body>
+    <div class="header">
+        <b class="title">TotalChest</b>
+        <div class="btns">
+            <a class="btn" style="<?
+            if(verifyAccount()['stat']==false) echo 'display:none;';
+            ?>;" onclick="action.logout()">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAHlBMVEUAAAAAAACAgICAAAD/AADAwMD///8AgID//wCAgACkKDC8AAAAAXRSTlMAQObYZgAAAAFiS0dEBmFmuH0AAAAHdElNRQfiBBMBIhSc3rbyAAAAd0lEQVQI12MQYmBgYDY2ZmBgVGBgMnFxMWBgEGJSdnFxcWZgYFINdg0NdQbSocFuaWnODGqhQcpgEaUk1WCwGiG10FCwLkal1NBgY2MBBpCQomhYAdBEpUSJzrR0oAVCipHT0guBDEbBsvRCoBogEIfSDIxQGgwApXIV0NBrragAAAAldEVYdGRhdGU6Y3JlYXRlADIwMTgtMDQtMTlUMDE6MzQ6MjAtMDQ6MDAmDt15AAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE4LTA0LTE5VDAxOjM0OjIwLTA0OjAwV1NlxQAAAABJRU5ErkJggg==">
+                退出登录
+            </a>
+            <a class="btn" style="<?
+            if(verifyAccount()['stat']==true) echo 'display:none;';
+            ?>;" onclick="action.login()">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAGFBMVEUAAAAAAACAgIDAwMD///8AgID//wCAgACnIk6mAAAAAXRSTlMAQObYZgAAAAFiS0dEBI9o2VEAAAAHdElNRQfiBBMBIhXr2YZkAAAAY0lEQVQI1y3NTQqAIBQE4NETmFFr/06QQet+3Cd0hy7Q/emNKDy+YRYjLAAtB+Wgo2OyOuaFgbJqsko0Z4dwUAk2UW+gwimOBqz8uN6yGPb5vQoX/faVyk+Gp1TDbUxdqG57P90ADaNxh3mAAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA0LTE5VDAxOjM0OjIxLTA0OjAwgHnWzQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNC0xOVQwMTozNDoyMS0wNDowMPEkbnEAAAAASUVORK5CYII=">
+                登录
+            </a>
+        </div>
+    </div>
     <h3>Index of <?=$viewpath?></h3>
     <div class="list">
         <table summary="Directory Listing" cellpadding="0" cellspacing="0">
@@ -474,11 +644,19 @@ try {
         </div>
     </div>
     <div class="foot">
-        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/1.0.0-alpha.4
+        <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/<?=$version?>
     </div>
     <script>
         const dir="<?=$viewpath?>";
         const action={
+            logout:function(){
+                //document.cookie = "TotalChest_User=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                document.cookie = "TotalChest_Password=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                location.reload()
+            },
+            login:function(){
+                window.location.replace('?login')
+            },
             del:function(f,hasChild){
                 let msg='确定删除'+f+'?'
                 if(hasChild==true){
