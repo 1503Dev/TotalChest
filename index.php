@@ -1,20 +1,21 @@
 <?php
 /**
  * TotalChest: Lightweight PHP File Manger
- * VERSION 1.0.0-beta.5
+ * VERSION 1.0.0-beta.6
  * LICENSE
  * 
  * https://github.com/1503Dev/TotalChest
  */
 
 // User Configs
-$rootpath='<this>';
+$rootpath='<root>';
     // '<this>': The directory of this PHP file
     // '<root>': Website rootpath
     // Do not have '/' at the end. And preferably no subdirectory
 $actions=[
     'view'=>true // 访客是否允许查看
 ];
+$timezone='Asia/Shanghai'; // 时区
 $users=[
     'Admin'=>[
         'password'=>'7300cbe969a3c38a0cdf8bf5918afb50a1da4c982caf9af5ba4dbad31f490bee', //Admin114514
@@ -34,6 +35,7 @@ $users=[
 
 
 
+ini_set('date.timezone',$timezone);
 $html_style=' 
 .header {
     width: 100%;
@@ -130,9 +132,7 @@ tr {
     -height: 16px
 }
 
-td[list-type="size"],
-td[list-type="type"],
-td[list-type="action"] {
+td {
     white-space: nowrap
 }
 
@@ -169,15 +169,19 @@ div.foot,
 div.foot * {
     font: 90% monospace;
     color: #787878;
-    padding-top: 4px
+    padding-top: 4px;
 }
 
 a[file-type="directory"] {
-    color: green
+    color: green;
 }
 
 .btn-action~.btn-action {
-    margin-left: 4px
+    margin-left: 4px;
+}
+
+div[list-type="action"] a~a{
+    margin-left: 6px;
 }
 
 tr[file-type="directory"] {
@@ -194,7 +198,7 @@ div[list-type="action"] a {
     color: darkorange
 }
 ';
-$version='1.0.0-beta.5';
+$version='1.0.0-beta.6';
 function verifyAccount(){
     global $users;
     $stat=[
@@ -221,9 +225,8 @@ function showUser(){
         return urldecode($_COOKIE['TotalChest_User']);
     } return '';
 }
-
 if((!verifyAccount()['stat']&&$actions['view']==false)||isset($_GET['login'])){
-    die('<!DOCTYPE html>
+    echo('<!DOCTYPE html>
 <html>
 
 <head>
@@ -288,12 +291,22 @@ if((!verifyAccount()['stat']&&$actions['view']==false)||isset($_GET['login'])){
 </body>
 
 </html>');
+    setcookie("TotalChest_Password", "", time()-3600);
+    die();
 }
 if($actions['view']==false&&!verifyAccount()['stat']){
     die('<h2>Insufficient permission</h2>');
 }
+function getMaxUpload() {
+    $sizeStr=ini_get('upload_max_filesize');
+    $units = ['B' => 1, 'K' => 1024, 'M' => 1024*1024, 'G' => 1024*1024*1024, 'T' => 1024*1024*1024*1024];
+    preg_match('/^([0-9]+)([BKMGT])$/', $sizeStr, $matches);
+    if ($matches) {
+        return (int)$matches[1] * $units[$matches[2]];
+    }
+    return false;
+}
 function formatBytes($bytes) {
-    // 判断大小并转换为最合适的单位
     if ($bytes >= 1073741824) {
         $size = round($bytes / 1073741824, 2) . ' GB';
     } elseif ($bytes >= 1048576) {
@@ -327,9 +340,11 @@ function _gft($ft){
         "application/gzip"=>"gz压缩包",
         "application/x-tar"=>"tar压缩包",
         "application/x-7z-compressed"=>"7z压缩包",
+        'application/x-empty'=>'空文件',
         "image/jpeg"=>"图片",
         "image/gif"=>"图片",
         "image/png"=>"图片",
+        'image/vnd.microsoft.icon'=>'图标',
         "video/mp4"=>"视频",
         'audio/midi'=>'MIDI',
         'audio/mpeg'=>'MP3音乐',
@@ -418,8 +433,8 @@ function getRelativePathToURL($p) {
     return $p;
 }
 function gCPRTR($rootpath) {//getCurrentPathRelativeToRoot
-    if(strstr($rootpath,'&root')){
-        return(str_replace('&root','',$rootpath));
+    if(strstr($rootpath,'<root>')){
+        return(str_replace('<root>','',$rootpath));
     }
     // 获取脚本名称对应的目录（不包含脚本文件名）
     $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
@@ -436,7 +451,7 @@ function gCPRTR($rootpath) {//getCurrentPathRelativeToRoot
 function getMsg($s){
     if($s===true) return "成功";
     if($s===false) return "失败";
-    else return "已尝试";
+    else return "完成";
 }
 function removeDirectoryRecursively($dir) {
     if (!file_exists($dir) || !is_dir($dir)) {
@@ -465,6 +480,14 @@ function isAllSameChar($str, $char) {
     $result = str_replace($char, '', $str);
     return strlen($result) === 0;
 }
+function getFileDir($path){
+    $a=explode('/',$path);
+    $b='';
+    for($i=0;$i<count($a)-1;$i++){
+        $b=$b.$a[$i].'/';
+    }
+    return $b;
+}
 function handleAction($act){
     global $actions;
     global $path;
@@ -486,6 +509,57 @@ function handleAction($act){
             case "mkdir":
                 $r="创建文件夹 ".getMsg(mkdir($path));
                 break;
+            case "mkfile":
+                $r="创建文件 ".getMsg(file_put_contents($path,''));
+                break;
+            case 'view':
+                die(file_get_contents($path));
+                break;
+            case 'edit':
+                die('编辑文件 '.getMsg(file_put_contents($path,$_POST['content'])));
+                break;
+            case 'rename':
+                if(file_exists(getFileDir($path).$_GET['new_name'])){
+                    $r='文件已存在';
+                } else $r='重命名 '.getMsg(rename($path,getFileDir($path).$_GET['new_name']));
+                break;
+            case 'unzip':
+$zipFilePath = $path;
+$destinationPath = getFileDir($path);
+$zip = new ZipArchive();
+$res = $zip->open($zipFilePath);
+if ($res === TRUE) {
+    $zip->extractTo($destinationPath);
+    $zip->close();
+    $r= "解压成功";
+} else {
+    $r= "无法打开ZIP文件";
+}
+                break;
+            case 'can_upload':
+                if((int)$_GET['size']>getMaxUpload()){
+                    die("文件过大\n大于php.ini中[PHP]upload_max_filesize或[PHP]post_max_size的值");
+                } die('');
+                break;
+            case 'upload':
+                if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+                    $tmp_name = $_FILES['file']['tmp_name'];
+                    $target_dir = $path;
+                    $target_file = $target_dir . basename($_FILES["file"]["name"]);
+                    if (!file_exists($target_dir)) {
+                        mkdir($target_dir, 0777, true);
+                    }
+                    if (move_uploaded_file($tmp_name, $target_file)) {
+                        $r= "suc%上传成功";
+                    } else {
+                        $r= "err%上传出错".$_FILES['file']['error'];
+                    }
+                } else {
+                    die("err%文件过大\n大于php.ini中[PHP]upload_max_filesize或[PHP]post_max_size的值");
+                }
+                die($r);
+            default:
+                header('Location: ?path='.urlencode($_GET['path']));
         }
     }
     return ("\n".'<h2>'.$r.'</h2>
@@ -501,7 +575,7 @@ function start() {
 }
 setTimeout(function(){
     start("action")
-},1000)
+},750)
 </script>');
 }
 
@@ -579,6 +653,7 @@ try {
                     <th list-type="icon"></th>
                     <th>名称</th>
                     <th>大小</th>
+                    <th list-type="filetime">修改时间</th>
                     <th>类型</th>
                     <th list-type="action">操作</th>
                 </tr>
@@ -621,16 +696,29 @@ try {
                     } else echo formatBytes(filesize($filepath));
                     echo '</td>';
                     
+                    echo '<td list-type="filetime">';
+                    if(isParentBoolean($file)){
+                        echo '-';
+                    } else echo date('Y-m-d H:i:s',filemtime($filepath));
+                    echo '</td>';
+                    
                     echo '<td list-type="type">';
-                    echo _gft(getFileType($filepath));
+                    if(isParentBoolean($file)){
+                        echo '父文件夹';
+                    } else echo _gft(getFileType($filepath));
                     echo '</td>';
                     
                     echo '<td list-type="action">';
                     if(!isParentBoolean($file)){
-                        echo '<a class="btn-action action-del" onclick="action.del(`'.$file.'`,'.hasChildFiles($filepath).')">删除</a>';
+                        echo '<a class="btn-action action-del" onclick="action.del(`'.urlencode($file).'`,'.hasChildFiles($filepath).')">删除</a>';
                         if(is_dir($filepath)){
                             echo '<a class="btn-action action-visit" href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">访问</a>';
+                        } else if(strstr(getFileType($filepath),'application')==false&&strstr(getFileType($filepath),'image')==false) {
+                            echo '<a class="btn-action action-edit" onclick="action.edit(`'.urlencode($file).'`,'.filesize($filepath).')">编辑</a>';
+                        } if(getFileType($filepath)=='application/zip'){
+                            echo '<a class="btn-action action-unzip" onclick="action.unzip(`'.urlencode($file).'`)">解压</a>';
                         }
+                        echo '<a class="btn-action action-rename" onclick="action.rename(`'.urlencode($file).'`)">重命名</a>';
                     } else  echo '<a class="btn-action">-</a>';
                     echo '</td>';
                     
@@ -641,6 +729,13 @@ try {
         </table>
         <div list-type="action">
             <a onclick="action.mkdir()">新建文件夹</a>
+            <a onclick="action.mkfile()">新建文件</a>
+            <a>
+                <label for="fileSelector">
+                    上传文件(单个)
+                    <input type="file" onchange="action.upload(this,this.parentNode.parentNode)" id="fileSelector" style="display:none;">
+                </label>
+            </a>
         </div>
     </div>
     <div class="foot">
@@ -648,16 +743,69 @@ try {
     </div>
     <script>
         const dir="<?=$viewpath?>";
+        const fileUnValidMsg='文件名不能包含\\/:*?"<>|，不能为..和.，且不能超过255个字符';
+        function isValidFileName(name) {
+            if(name.length>255) return false
+            if(name==".."||name=='.') return false
+            var invalidCharsPattern = /[\\/:*?"<>|]/; // 匹配不允许的文件/文件夹字符
+            return !invalidCharsPattern.test(name);
+        }
+        function httpGet(url, callback = function() {}) {
+            var xhttp = new XMLHttpRequest()
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4) {
+                    callback(this.responseText, this.status)
+                }
+            }
+            xhttp.open("GET", url, true)
+            xhttp.send()
+        }
+        function httpPost(url, data, callback = function() {}) {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    callback(this.responseText);
+                }
+            };
+            xhttp.open("POST", url, true);
+            xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xhttp.send(data);
+        }
+        function upload(file,pe){
+            var xhr = new XMLHttpRequest();
+            var formData = new FormData();
+            formData.append('file', file);
+            xhr.open('POST', '?path='+encodeURIComponent(dir)+'&action=upload', true);
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                      var percentComplete = event.loaded / event.total;
+                    percentComplete = parseInt(percentComplete * 100);
+                    pe.innerHTML=(percentComplete + '%');
+                } else {
+                 pe.innerHTML=('无法计算进度');
+                }
+            };
+            xhr.onload = function() {
+                if(this.responseText.split('%')[0]=="err"){
+                    alert(this.responseText.split('%')[1])
+                } else {
+                    pe.innerHTML=this.responseText.split('%')[1]
+                }
+                setTimeout('location.reload()',500)
+            };
+            xhr.send(formData);
+        }
         const action={
             logout:function(){
                 //document.cookie = "TotalChest_User=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
                 document.cookie = "TotalChest_Password=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                location.reload()
+                window.location.replace('?login')
             },
             login:function(){
                 window.location.replace('?login')
             },
             del:function(f,hasChild){
+                f=decodeURI(f)
                 let msg='确定删除'+f+'?'
                 if(hasChild==true){
                     if(confirm(msg)!=true) return
@@ -667,18 +815,52 @@ try {
                     window.location.replace('?path='+encodeURIComponent(dir+f)+'&action=del&has_child='+hasChild)
                 }
             },
+            edit:function(f,size){
+                f=decodeURI(f)
+                if(size>16777216) return alert('超过16MB的文件不能编辑')
+                httpGet('?path='+encodeURIComponent(dir+f)+'&action=view',function(r){
+                    let c=prompt('编辑',r)
+                    if(c!==r&&c!==void 0&&c!==null&&c!==''){
+                        httpPost('?path='+encodeURIComponent(dir+f)+'&action=edit','content='+encodeURIComponent(c),function(r){
+                            alert(r)
+                            location.reload()
+                        })
+                    }
+                })
+            },
+            rename:function(f){
+                f=decodeURI(f)
+                let fn=prompt('重命名'+f,f)
+                if(fn==""||fn==f) return
+                if(isValidFileName(fn)){
+                    window.location.replace('?path='+encodeURIComponent(dir+f)+'&new_name='+encodeURIComponent(fn)+'&action=rename')
+                } else alert(fileUnValidMsg)
+            },
+            unzip:function(f){
+                f=decodeURI(f)
+                if(confirm('是否解压'+f)) window.location.replace('?path='+encodeURIComponent(dir+f)+'&action=unzip')
+            },
             mkdir:function(){
-                function isValidFileName(name) {
-                    if(name.length>255) return false
-                    if(name==".."||name=='.') return false
-                    var invalidCharsPattern = /[\\/:*?"<>|]/; // 匹配不允许的文件/文件夹字符
-                    return !invalidCharsPattern.test(name);
-                }
                 let fn=prompt('新建文件夹')
                 if(fn=="") return
                 if(isValidFileName(fn)){
-                    window.location.replace('?path='+encodeURIComponent(dir)+encodeURIComponent(fn)+'&action=mkdir')
-                } else alert('文件名不能包含\\/:*?"<>|，不能为..和.，且不能超过255个字符');
+                    window.location.replace('?path='+encodeURIComponent(dir+fn)+'&action=mkdir')
+                } else alert(fileUnValidMsg);
+            },
+            mkfile:function(){
+                let fn=prompt('新建文件')
+                if(fn=="") return
+                if(isValidFileName(fn)){
+                    window.location.replace('?path='+encodeURIComponent(dir+fn)+'&action=mkfile')
+                } else alert(fileUnValidMsg);
+            },
+            upload:function(e,pe){
+                let file=e.files[0]
+                if(!file) return
+                httpGet('?path=/&action=can_upload&size='+file.size,function(r){
+                    if(r!='') return alert(r)
+                    upload(file,pe)
+                })
             }
         }
     </script>
