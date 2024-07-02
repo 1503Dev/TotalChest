@@ -1,7 +1,7 @@
 <?php
 /**
  * TotalChest: Lightweight PHP File Manger
- * VERSION 1.0.0-beta.6
+ * VERSION 1.0.0-beta.7
  * LICENSE
  * 
  * https://github.com/1503Dev/TotalChest
@@ -36,6 +36,19 @@ $users=[
 
 
 ini_set('date.timezone',$timezone);
+$version='1.0.0-beta.7';
+if(!isset($_COOKIE['TotalChest_Client_Settings'])){
+    setcookie('TotalChest_Client_Settings','{}');
+    $_COOKIE['TotalChest_Client_Settings']='{}';
+}
+$client_settings=json_decode($_COOKIE['TotalChest_Client_Settings'],true);
+function initSettings(){
+    global $client_settings;
+    if(!isset($client_settings['show_file_time'])) $client_settings['show_file_time']=true;
+    if(!isset($client_settings['show_file_type'])) $client_settings['show_file_type']=true;
+    setcookie('TotalChest_Client_Settings',json_encode($client_settings));
+}
+initSettings();
 $html_style=' 
 .header {
     width: 100%;
@@ -71,6 +84,7 @@ $html_style='
     display: table-cell;
     vertical-align: middle;
     font-size:90%;
+    padding:8px;
 }
 
 .header>.btns> .btn img{
@@ -96,14 +110,15 @@ body {
     background-color: #F5F5F5;
 }
 
-h2,
 h3 {
     margin-bottom: 12px;
-    width: 97vw;
+    padding-top:4px;
+    width: 100%;
     padding-right: 8px;
     box-sizing: border-box;
     overflow-x: auto;
-    white-space: nowrap
+    white-space: nowrap;
+    font-family:monospace;
 }
 
 table {
@@ -198,7 +213,6 @@ div[list-type="action"] a {
     color: darkorange
 }
 ';
-$version='1.0.0-beta.6';
 function verifyAccount(){
     global $users;
     $stat=[
@@ -488,6 +502,28 @@ function getFileDir($path){
     }
     return $b;
 }
+function getFileName($path){
+    $a=explode('/',$path);
+    if($a[count($a)-1]=='') unset($a[count($a)-1]);
+    return $a[count($a)-1];
+}
+function addFolderToZip($folder, $zip){
+    global $path;
+    $handle = opendir($folder);
+    while (false !== ($file = readdir($handle))) {
+        if ($file === '.' || $file === '..') {
+            continue;
+        }
+        $filePath = $folder . '/' . $file;
+        if (is_dir($filePath)) {
+            addFolderToZip($filePath, $zip);
+        } else {
+            $relativePath = getFileName($path).substr($filePath, strlen($path));
+            $zip->addFile($filePath, $relativePath);
+        }
+    }
+    closedir($handle);
+}
 function handleAction($act){
     global $actions;
     global $path;
@@ -524,17 +560,44 @@ function handleAction($act){
                 } else $r='重命名 '.getMsg(rename($path,getFileDir($path).$_GET['new_name']));
                 break;
             case 'unzip':
-$zipFilePath = $path;
-$destinationPath = getFileDir($path);
-$zip = new ZipArchive();
-$res = $zip->open($zipFilePath);
-if ($res === TRUE) {
-    $zip->extractTo($destinationPath);
-    $zip->close();
-    $r= "解压成功";
-} else {
-    $r= "无法打开ZIP文件";
-}
+                $zipFilePath = $path;
+                $destinationPath = getFileDir($path);
+                $zip = new ZipArchive();
+                $res = $zip->open($zipFilePath);
+                if ($res === TRUE) {
+                    $zip->extractTo($destinationPath);
+                    $zip->close();
+                    $r= "解压成功";
+                } else {
+                    $r= "无法打开ZIP文件";
+                }
+                break;
+            case 'zip':
+                if(is_dir($path)){
+                    $sourceFolder = $path;
+                    $zipFile = $path.'.zip';
+                    if(file_exists($zipFile)) $zipFile = $path.'_'.mt_rand(1001,9999).'.zip';
+                    $zip = new ZipArchive();
+                    if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                        addFolderToZip($sourceFolder, $zip);
+                        $zip->close();
+                        $r='文件夹已成功压缩至 '.getFileName($zipFile);
+                    } else {
+                        $r="无法创建zip文件";
+                    }
+                    break;
+                }
+                $fileToZip = $path;
+                $zipFile = $path.'.zip';
+                if(file_exists($zipFile)) $zipFile = $path.'_'.mt_rand(1001,9999).'.zip';
+                $zip = new ZipArchive();
+                if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
+                    $zip->addFile($fileToZip, basename($fileToZip));
+                    $zip->close();
+                    $r='文件已成功压缩至 '.getFileName($zipFile);
+                } else {
+                    $r="无法创建zip文件";
+                }
                 break;
             case 'can_upload':
                 if((int)$_GET['size']>getMaxUpload()){
@@ -611,15 +674,74 @@ try {
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>TotalChest</title>
+    <title>TotalChest: <?=$viewpath?></title>
     <style>
         <?=$html_style?>
         body {
             padding-top:32px;
         }
+        .dialog{
+            display:none;
+            width:100%;
+            height:100%;
+            position: fixed;
+            left:0px;
+            top:0px;
+            background: rgba(0,0,0,0.4);
+            z-index:1503;
+        }
+        .dialog-body{
+            --width:192px;
+            --height:128px;
+            position: absolute;
+            top:25%;
+            left:calc(50% - var(--width) / 2);
+            width:var(--width);
+            height: var(--height);
+            box-sizing: border-box;
+            padding: 8px;
+            background: white;
+            overflow: auto;
+            box-shadow: 0px 1px 5px rgba(0,0,0,0.5);
+        }
+        .dialog-title{
+            display: inline-block;
+        }
+        .dialog-close{
+            float: right;
+            position: relative;
+            top: -1.25px;
+            right: 2px;
+        }
+        .dialog-content{
+            margin-top: 4px;
+            font:90% monospace;
+        }
+        #settingsDialog input{
+            height:12px;
+            position: absolute;
+            right:8px;
+        }
+        #settingsDialog input[type="text"]{
+            width: 72px;
+            right:11px;
+        }
+        #settingsDialog input[type="checkbox"]{
+            width:12px;
+        }
         <?
         if(verifyAccount()['permission']!=100){
             echo '*[list-type="action"]{
+            display: none;
+        }';
+        }
+        if(!$client_settings['show_file_time']){
+            echo '*[list-type="filetime"]{
+            display: none;
+        }';
+        }
+        if(!$client_settings['show_file_type']){
+            echo '*[list-type="type"]{
             display: none;
         }';
         }
@@ -631,6 +753,10 @@ try {
     <div class="header">
         <b class="title">TotalChest</b>
         <div class="btns">
+            <a class="btn" onclick="action.openDialog(settingsDialog)">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAFVBMVEUAAACAgIAAAADAwMD///+AgAD//wCscRewAAAAAXRSTlMAQObYZgAAAAFiS0dEBI9o2VEAAAAHdElNRQfiBhoAMxjAu68UAAAAZElEQVQI12MQBAMFBgZhYxBAYRgKikAZSiZQhkqooTCYoRym6KSqwCBs4qKa6BQGZBiKqgBFlECKw5yU3IJAjKCUlCQQQ1ktyDUMrDhUKVU1CWSFklGQkgIDyG4hIM2gBAYKDACD1RTJ+pL33QAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxOC0wNi0yNlQwMDo1MToyNC0wNDowMKiPG6cAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTgtMDYtMjZUMDA6NTE6MjQtMDQ6MDDZ0qMbAAAAAElFTkSuQmCC">
+                设置
+            </a>
             <a class="btn" style="<?
             if(verifyAccount()['stat']==false) echo 'display:none;';
             ?>;" onclick="action.logout()">
@@ -645,7 +771,7 @@ try {
             </a>
         </div>
     </div>
-    <h3>Index of <?=$viewpath?></h3>
+    <h3><?=fileNameFormat($viewpath)?></h3>
     <div class="list">
         <table summary="Directory Listing" cellpadding="0" cellspacing="0">
             <thead>
@@ -654,7 +780,7 @@ try {
                     <th>名称</th>
                     <th>大小</th>
                     <th list-type="filetime">修改时间</th>
-                    <th>类型</th>
+                    <th list-type="type">类型</th>
                     <th list-type="action">操作</th>
                 </tr>
             </thead>
@@ -697,7 +823,7 @@ try {
                     echo '</td>';
                     
                     echo '<td list-type="filetime">';
-                    if(isParentBoolean($file)){
+                    if(isParentBoolean($file)||!$client_settings['show_file_time']){
                         echo '-';
                     } else echo date('Y-m-d H:i:s',filemtime($filepath));
                     echo '</td>';
@@ -713,12 +839,13 @@ try {
                         echo '<a class="btn-action action-del" onclick="action.del(`'.urlencode($file).'`,'.hasChildFiles($filepath).')">删除</a>';
                         if(is_dir($filepath)){
                             echo '<a class="btn-action action-visit" href="'.gCPRTR($rootpath).getRelativePathToURL(rFO(cPTRTCS($viewpath.$file),__DIR__)).'">访问</a>';
-                        } else if(strstr(getFileType($filepath),'application')==false&&strstr(getFileType($filepath),'image')==false) {
+                        } else if(strstr(getFileType($filepath),'application')==false||strstr(getFileType($filepath),'x-empty')==true&&strstr(getFileType($filepath),'image')==false) {
                             echo '<a class="btn-action action-edit" onclick="action.edit(`'.urlencode($file).'`,'.filesize($filepath).')">编辑</a>';
                         } if(getFileType($filepath)=='application/zip'){
                             echo '<a class="btn-action action-unzip" onclick="action.unzip(`'.urlencode($file).'`)">解压</a>';
                         }
                         echo '<a class="btn-action action-rename" onclick="action.rename(`'.urlencode($file).'`)">重命名</a>';
+                        echo '<a class="btn-action action-zip" onclick="action.zip(`'.urlencode($file).'`)">压缩</a>';
                     } else  echo '<a class="btn-action">-</a>';
                     echo '</td>';
                     
@@ -741,8 +868,40 @@ try {
     <div class="foot">
         <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/<?=$version?>
     </div>
+    
+    <div id="settingsDialog" class="dialog">
+        <div class="dialog-body">
+            <b class="dialog-title">设置</b>
+            <span class="dialog-close" onclick="action.closeDialog(this)">×</span>
+            <div class="dialog-content">
+                <div>
+                    显示文件时间
+                    <input type="checkbox" id="setting_show_file_time" onchange="action.setConfig('show_file_time',this.checked)">
+                </div>
+                <div>
+                    显示文件类型
+                    <input type="checkbox" id="setting_show_file_type" onchange="action.setConfig('show_file_type',this.checked)">
+                </div>
+                <div>
+                    用户名
+                    <input readonly disabled id="setting_username" type="text" value="<?=urlencode(verifyAccount()['user'])?>">
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         const dir="<?=$viewpath?>";
+        function getCookie(cname){
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i=0; i<ca.length; i++) {
+                var c = ca[i].trim();
+                if (c.indexOf(name)==0) return decodeURIComponent(c.substring(name.length,c.length));
+            }
+            return "";
+        }
+        const settings=JSON.parse(getCookie('TotalChest_Client_Settings'));
         const fileUnValidMsg='文件名不能包含\\/:*?"<>|，不能为..和.，且不能超过255个字符';
         function isValidFileName(name) {
             if(name.length>255) return false
@@ -795,6 +954,18 @@ try {
             };
             xhr.send(formData);
         }
+        function initSettings(){
+            setting_show_file_time.checked=settings.show_file_time
+            setting_show_file_type.checked=settings.show_file_type
+            setting_username=decodeURIComponent(setting_username.value)
+        }
+        function encode(str){
+            return encodeURIComponent(str)
+        }
+        function decode(str){
+            return decodeURIComponent(str).replace(/\+/g,' ')
+        }
+        initSettings()
         const action={
             logout:function(){
                 //document.cookie = "TotalChest_User=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -804,8 +975,42 @@ try {
             login:function(){
                 window.location.replace('?login')
             },
+            setConfig:function(key,value){
+                settings[key]=value
+                document.cookie='TotalChest_Client_Settings='+encodeURIComponent(JSON.stringify(settings))
+                switch (key){
+                    case 'show_file_time':
+                        if(value){
+                            document.querySelectorAll('[list-type="filetime"]').forEach(function(e){
+                                e.style.display="block"
+                            })
+                        } else {
+                            document.querySelectorAll('[list-type="filetime"]').forEach(function(e){
+                                e.style.display="none"
+                            })
+                        }
+                        break;
+                    case 'show_file_type':
+                        if(value){
+                            document.querySelectorAll('[list-type="type"]').forEach(function(e){
+                                e.style.display="block"
+                            })
+                        } else {
+                            document.querySelectorAll('[list-type="type"]').forEach(function(e){
+                                e.style.display="none"
+                            })
+                        }
+                        break;
+                }
+            },
+            openDialog:function(e){
+                e.style.display="block"
+            },
+            closeDialog:function(e){
+                e.parentNode.parentNode.style.display='none'
+            },
             del:function(f,hasChild){
-                f=decodeURI(f)
+                f=decode(f)
                 let msg='确定删除'+f+'?'
                 if(hasChild==true){
                     if(confirm(msg)!=true) return
@@ -816,10 +1021,10 @@ try {
                 }
             },
             edit:function(f,size){
-                f=decodeURI(f)
+                f=decode(f)
                 if(size>16777216) return alert('超过16MB的文件不能编辑')
                 httpGet('?path='+encodeURIComponent(dir+f)+'&action=view',function(r){
-                    let c=prompt('编辑',r)
+                    let c=prompt('编辑'+f,r)
                     if(c!==r&&c!==void 0&&c!==null&&c!==''){
                         httpPost('?path='+encodeURIComponent(dir+f)+'&action=edit','content='+encodeURIComponent(c),function(r){
                             alert(r)
@@ -829,7 +1034,7 @@ try {
                 })
             },
             rename:function(f){
-                f=decodeURI(f)
+                f=decode(f)
                 let fn=prompt('重命名'+f,f)
                 if(fn==""||fn==f) return
                 if(isValidFileName(fn)){
@@ -837,8 +1042,12 @@ try {
                 } else alert(fileUnValidMsg)
             },
             unzip:function(f){
-                f=decodeURI(f)
+                f=decode(f)
                 if(confirm('是否解压'+f)) window.location.replace('?path='+encodeURIComponent(dir+f)+'&action=unzip')
+            },
+            zip:function(f){
+                f=decode(f)
+                if(confirm('是否压缩'+f)) window.location.replace('?path='+encodeURIComponent(dir+f)+'&action=zip')
             },
             mkdir:function(){
                 let fn=prompt('新建文件夹')
