@@ -1,7 +1,7 @@
 <?php
 /**
  * TotalChest: Lightweight PHP File Manger
- * VERSION 1.0.0-beta.7
+ * VERSION 1.0.0
  * LICENSE
  * 
  * https://github.com/1503Dev/TotalChest
@@ -36,7 +36,7 @@ $users=[
 
 
 ini_set('date.timezone',$timezone);
-$version='1.0.0-beta.7';
+$version='1.0.0';
 if(!isset($_COOKIE['TotalChest_Client_Settings'])){
     setcookie('TotalChest_Client_Settings','{}');
     $_COOKIE['TotalChest_Client_Settings']='{}';
@@ -51,44 +51,12 @@ function initSettings(){
 initSettings();
 $html_style=' 
 .header {
-    width: 100%;
-    height: 48px;
-    background: white;
     box-shadow: 0px 1px 5px rgba(0,0,0,0.5);
-    position: fixed;
-    left: 0px;
-    top: 0px
+    z-index:1000;
 }
 
 .header div{
     display:inline-box;
-}
-
-.header>.title{
-    height:100%;
-    line-height:48px;
-    margin-left:8px;
-    font-size:20px;
-    font:bold;
-}
-
-.header>.btns{
-    position:absolute;
-    top:0px;
-    right:8px;
-    height:100%;
-    display: table;
-}
-
-.header>.btns> .btn{
-    display: table-cell;
-    vertical-align: middle;
-    font-size:90%;
-    padding:8px;
-}
-
-.header>.btns> .btn img{
-    vertical-align: middle;
 }
 
 a {
@@ -106,13 +74,9 @@ a:focus {
     color: red
 }
 
-body {
-    background-color: #F5F5F5;
-}
-
 h3 {
     margin-bottom: 12px;
-    padding-top:4px;
+    padding-top:20px;
     width: 100%;
     padding-right: 8px;
     box-sizing: border-box;
@@ -121,9 +85,8 @@ h3 {
     font-family:monospace;
 }
 
-table {
-    margin-left: 12px;
-    width: auto
+.list{
+    box-sizing:border-box;
 }
 
 th,
@@ -133,18 +96,7 @@ td {
 }
 
 th {
-    font-weight: bold;
-    padding-right: 14px;
-    padding-bottom: 3px;
     white-space: nowrap
-}
-
-td {
-    padding-right: 14px
-}
-
-tr {
-    -height: 16px
 }
 
 td {
@@ -154,23 +106,17 @@ td {
 td[list-type="name"] span {
     display: block;
     white-space: nowrap;
-    margin: 1px
-}
-
-td[list-type="icon"] img {
-    width: 14px;
-    margin: 0px
-}
-
-td[list-type="icon"] {
-    padding-right: 2px
 }
 
 span a {
     margin-left: 2px
 }
 
-div.list {
+[list-type="icon"] img{
+    width:14px;
+}
+
+div.li-st {
     background-color: white;
     border-top: 1px solid #646464;
     border-bottom: 1px solid #646464;
@@ -621,6 +567,8 @@ function handleAction($act){
                     die("err%文件过大\n大于php.ini中[PHP]upload_max_filesize或[PHP]post_max_size的值");
                 }
                 die($r);
+            case 'copy':
+                break;
             default:
                 header('Location: ?path='.urlencode($_GET['path']));
         }
@@ -668,6 +616,19 @@ try {
     die("无法读取目录: " . $e->getMessage());
 }
 ?>
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html>
 
@@ -675,6 +636,8 @@ try {
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>TotalChest: <?=$viewpath?></title>
+    <link rel="stylesheet" href="https://unpkg.com/mdui@1.0.2/dist/css/mdui.min.css">
+    <script src="https://unpkg.com/mdui@1.0.2/dist/js/mdui.min.js"></script>
     <style>
         <?=$html_style?>
         body {
@@ -749,31 +712,34 @@ try {
     </style>
 </head>
 
-<body>
-    <div class="header">
-        <b class="title">TotalChest</b>
-        <div class="btns">
-            <a class="btn" onclick="action.openDialog(settingsDialog)">
-                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAFVBMVEUAAACAgIAAAADAwMD///+AgAD//wCscRewAAAAAXRSTlMAQObYZgAAAAFiS0dEBI9o2VEAAAAHdElNRQfiBhoAMxjAu68UAAAAZElEQVQI12MQBAMFBgZhYxBAYRgKikAZSiZQhkqooTCYoRym6KSqwCBs4qKa6BQGZBiKqgBFlECKw5yU3IJAjKCUlCQQQ1ktyDUMrDhUKVU1CWSFklGQkgIDyG4hIM2gBAYKDACD1RTJ+pL33QAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxOC0wNi0yNlQwMDo1MToyNC0wNDowMKiPG6cAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTgtMDYtMjZUMDA6NTE6MjQtMDQ6MDDZ0qMbAAAAAElFTkSuQmCC">
-                设置
-            </a>
-            <a class="btn" style="<?
+<body class="mdui-theme-primary-indigo mdui-theme-accent-pink">
+    <div class="mdui-toolbar mdui-color-theme header mdui-appbar-fixed">
+        <span class="mdui-typo-title">TotalChest</span>
+        <div class="mdui-toolbar-spacer"></div>
+        <div class="mdui-btn mdui-btn-icon btn" list-type="action" onclick="action.openDialog(newDialog)">
+            <i class="mdui-icon material-icons">add</i>
+        </div>
+        <label for="fileSelector" class="mdui-btn mdui-btn-icon btn" list-type="action">
+            <i class="mdui-icon material-icons">cloud_upload</i>
+            <input type="file" onchange="action.upload(this,this.parentNode)" id="fileSelector" style="display:none;">
+        </label>
+        <div class="mdui-btn mdui-btn-icon btn" onclick="action.openDialog(settingsDialog)">
+            <i class="mdui-icon material-icons">settings</i>
+        </div>
+        <div class="btn mdui-btn mdui-btn-icon" style="<?
             if(verifyAccount()['stat']==false) echo 'display:none;';
             ?>;" onclick="action.logout()">
-                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAHlBMVEUAAAAAAACAgICAAAD/AADAwMD///8AgID//wCAgACkKDC8AAAAAXRSTlMAQObYZgAAAAFiS0dEBmFmuH0AAAAHdElNRQfiBBMBIhSc3rbyAAAAd0lEQVQI12MQYmBgYDY2ZmBgVGBgMnFxMWBgEGJSdnFxcWZgYFINdg0NdQbSocFuaWnODGqhQcpgEaUk1WCwGiG10FCwLkal1NBgY2MBBpCQomhYAdBEpUSJzrR0oAVCipHT0guBDEbBsvRCoBogEIfSDIxQGgwApXIV0NBrragAAAAldEVYdGRhdGU6Y3JlYXRlADIwMTgtMDQtMTlUMDE6MzQ6MjAtMDQ6MDAmDt15AAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE4LTA0LTE5VDAxOjM0OjIwLTA0OjAwV1NlxQAAAABJRU5ErkJggg==">
-                退出登录
-            </a>
-            <a class="btn" style="<?
+            <i class="mdui-icon material-icons">exit_to_app</i>
+        </div>
+        <div class="btn" style="<?
             if(verifyAccount()['stat']==true) echo 'display:none;';
             ?>;" onclick="action.login()">
-                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAGFBMVEUAAAAAAACAgIDAwMD///8AgID//wCAgACnIk6mAAAAAXRSTlMAQObYZgAAAAFiS0dEBI9o2VEAAAAHdElNRQfiBBMBIhXr2YZkAAAAY0lEQVQI1y3NTQqAIBQE4NETmFFr/06QQet+3Cd0hy7Q/emNKDy+YRYjLAAtB+Wgo2OyOuaFgbJqsko0Z4dwUAk2UW+gwimOBqz8uN6yGPb5vQoX/faVyk+Gp1TDbUxdqG57P90ADaNxh3mAAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE4LTA0LTE5VDAxOjM0OjIxLTA0OjAwgHnWzQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxOC0wNC0xOVQwMTozNDoyMS0wNDowMPEkbnEAAAAASUVORK5CYII=">
-                登录
-            </a>
+            <i class="mdui-icon material-icons">account_circle</i>
         </div>
     </div>
     <h3><?=fileNameFormat($viewpath)?></h3>
-    <div class="list">
-        <table summary="Directory Listing" cellpadding="0" cellspacing="0">
+    <div class="mdui-table-fluid">
+        <table class="mdui-table-fluid mdui-table -mdui-table-selectable" summary="Directory Listing" cellpadding="0" cellspacing="0">
             <thead>
                 <tr>
                     <th list-type="icon"></th>
@@ -854,16 +820,6 @@ try {
                 ?>
             </tbody>
         </table>
-        <div list-type="action">
-            <a onclick="action.mkdir()">新建文件夹</a>
-            <a onclick="action.mkfile()">新建文件</a>
-            <a>
-                <label for="fileSelector">
-                    上传文件(单个)
-                    <input type="file" onchange="action.upload(this,this.parentNode.parentNode)" id="fileSelector" style="display:none;">
-                </label>
-            </a>
-        </div>
     </div>
     <div class="foot">
         <a nocolor href="https://github.com/1503Dev/TotalChest">TotalChest</a>/<?=$version?>
@@ -889,6 +845,22 @@ try {
             </div>
         </div>
     </div>
+    <div id="newDialog" class="dialog">
+        <div class="dialog-body">
+            <b class="dialog-title">新建</b>
+            <span class="dialog-close" onclick="action.closeDialog(this)">×</span>
+            <div class="dialog-content">
+                <button onclick="action.mkdir()" style="width:100%">
+                    新建文件夹
+                </button>
+                <br>
+                <button onclick="action.mkfile()" style="width:100%">
+                    新建文件
+                </button>
+            </div>
+        </div>
+    </div>
+    
     
     <script>
         const dir="<?=$viewpath?>";
